@@ -1,5 +1,5 @@
 // ============================================================
-//  Cluster AKS — Template réutilisable
+//  Cluster AKS - Template réutilisable
 //  Exercice : configuration d'un premier cluster AKS
 //  Usage : az deployment group create \
 //            --resource-group <rg> \
@@ -7,7 +7,7 @@
 //            --parameters @params.bicepparam
 // ============================================================
 
-// ── Paramètres ──────────────────────────────────────────────
+// -- Paramètres ----------------------------------------------
 
 @description('Nom du cluster AKS')
 @minLength(3)
@@ -93,12 +93,12 @@ param tags object = {
   managedBy: 'bicep'
 }
 
-// ── Variables ────────────────────────────────────────────────
+// -- Variables ------------------------------------------------
 
 var dnsPrefix = '${clusterName}-dns'
 var nodeResourceGroup = 'MC_${resourceGroupName}_${clusterName}_${location}'
 
-// ── Cluster AKS ─────────────────────────────────────────────
+// -- Cluster AKS ---------------------------------------------
 
 resource aksCluster 'Microsoft.ContainerService/managedClusters@2026-01-02-preview' = {
   name: clusterName
@@ -280,7 +280,7 @@ resource aksCluster 'Microsoft.ContainerService/managedClusters@2026-01-02-previ
   }
 }
 
-// ── Node Pool (déclaration explicite) ────────────────────────
+// -- Node Pool (déclaration explicite) ------------------------
 
 resource agentPool 'Microsoft.ContainerService/managedClusters/agentPools@2026-01-02-preview' = {
   parent: aksCluster
@@ -317,7 +317,7 @@ resource agentPool 'Microsoft.ContainerService/managedClusters/agentPools@2026-0
   }
 }
 
-// ── Fenêtres de maintenance ──────────────────────────────────
+// -- Fenêtres de maintenance ----------------------------------
 
 resource maintenanceAutoUpgrade 'Microsoft.ContainerService/managedClusters/maintenanceConfigurations@2026-01-02-preview' = {
   parent: aksCluster
@@ -357,7 +357,7 @@ resource maintenanceNodeOSUpgrade 'Microsoft.ContainerService/managedClusters/ma
   }
 }
 
-// ── Outputs ──────────────────────────────────────────────────
+// -- Outputs --------------------------------------------------
 
 output clusterName string = aksCluster.name
 output clusterFqdn string = aksCluster.properties.fqdn

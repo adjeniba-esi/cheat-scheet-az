@@ -1,5 +1,5 @@
 // ============================================================
-//  Azure Container Registry — Template réutilisable
+//  Azure Container Registry - Template réutilisable
 //  Exercice : configuration d'un registre de conteneurs ACR
 //  Usage : az deployment group create \
 //            --resource-group <rg> \
@@ -9,7 +9,7 @@
 
 // ── Paramètres ──────────────────────────────────────────────
 
-@description('Nom du registre ACR — unique globalement, minuscules, 5-50 caractères')
+@description('Nom du registre ACR - unique globalement, minuscules, 5-50 caractères')
 @minLength(5)
 @maxLength(50)
 param registryName string
@@ -31,7 +31,7 @@ param location string = 'canadacentral'
 @allowed(['Basic', 'Standard', 'Premium'])
 param sku string = 'Basic'
 
-@description('Activer le compte administrateur (non recommandé en prod — préférer les identités managées)')
+@description('Activer le compte administrateur (non recommandé en prod - préférer les identités managées)')
 param adminUserEnabled bool = false
 
 @description('Activer le pull anonyme (lecture publique sans authentification)')
