@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>kubectl · AKS — Kit de survie</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --mono:'JetBrains Mono',monospace;
+  --sans:'DM Sans',sans-serif;
+  --bg:#0f1117;
+  --bg2:#181c27;
+  --bg3:#1e2433;
+  --border:#2a3148;
+  --border2:#3a4560;
+  --text:#e8eaf0;
+  --text2:#8b92a8;
+  --text3:#555e7a;
+  --blue:#5b9cf6;
+  --amber:#f0a840;
+  --green:#4ade80;
+  --red:#f87171;
+  --purple:#a78bfa;
+  --teal:#34d399;
+  --cat-contexte:#5b9cf6;
+  --cat-infra:#34d399;
+  --cat-debug:#f0a840;
+  --cat-cycle:#f87171;
+  --cat-deploy:#a78bfa;
+  --cat-reseau:#4ade80;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;padding:2rem 1.5rem;}
+
+.wrap{max-width:1100px;margin:0 auto;}
+
+/* Header */
+.header{display:flex;align-items:center;gap:16px;margin-bottom:2rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border);}
+.traffic-lights{display:flex;gap:7px;}
+.tl{width:12px;height:12px;border-radius:50%;}
+.tl-r{background:#f87171;}
+.tl-y{background:#f0a840;}
+.tl-g{background:#4ade80;}
+.header-title{font-family:var(--mono);font-size:18px;font-weight:600;color:var(--text);letter-spacing:-.03em;}
+.header-title span{color:var(--text3);}
+.header-badge{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text3);border:1px solid var(--border2);border-radius:99px;padding:3px 10px;letter-spacing:.05em;}
+
+/* Search */
+.search-wrap{position:relative;margin-bottom:1.5rem;}
+.search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;stroke:var(--text3);fill:none;stroke-width:2;stroke-linecap:round;pointer-events:none;}
+#search{width:100%;padding:10px 14px 10px 38px;font-family:var(--mono);font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);outline:none;transition:border-color .15s;}
+#search:focus{border-color:var(--blue);}
+#search::placeholder{color:var(--text3);}
+
+/* Tabs */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:2rem;}
+.tab{display:flex;align-items:center;gap:6px;padding:6px 14px;font-size:11.5px;font-family:var(--sans);font-weight:500;border:1px solid var(--border);border-radius:99px;background:transparent;cursor:pointer;color:var(--text2);transition:all .15s;}
+.tab .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.tab:hover{background:var(--bg2);border-color:var(--border2);color:var(--text);}
+.tab.active{background:var(--bg3);border-color:var(--border2);color:var(--text);font-weight:600;}
+
+/* Tip */
+.tip-bar{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:9px 14px;margin-bottom:2rem;font-size:12px;color:var(--text2);}
+.tip-bar svg{width:14px;height:14px;stroke:var(--text3);fill:none;stroke-width:2;flex-shrink:0;}
+.tip-bar code{font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(74,222,128,.08);padding:1px 5px;border-radius:4px;}
+
+/* Section */
+.section{margin-bottom:2.5rem;}
+.section-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.section-stripe{width:3px;height:18px;border-radius:2px;flex-shrink:0;}
+.section-title{font-family:var(--sans);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);}
+.section-count{font-family:var(--mono);font-size:10px;color:var(--text3);margin-left:auto;background:var(--bg3);border:1px solid var(--border);border-radius:99px;padding:1px 8px;}
+
+/* Cards */
+.cmd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;}
+.cmd-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:11px 13px 11px 15px;cursor:pointer;transition:border-color .15s,transform .1s,background .15s;position:relative;border-left-width:3px;}
+.cmd-card:hover{background:var(--bg3);border-color:var(--border2);transform:translateY(-1px);}
+.cmd-card.copied{border-color:var(--green)!important;}
+
+.cmd-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;}
+.cmd-label{font-family:var(--sans);font-size:11.5px;font-weight:500;color:var(--text2);line-height:1.4;}
+.copy-btn{flex-shrink:0;opacity:0;transition:opacity .15s;margin-top:1px;}
+.copy-btn svg{width:13px;height:13px;stroke:var(--text3);fill:none;stroke-width:2;stroke-linecap:round;}
+.cmd-card:hover .copy-btn{opacity:1;}
+.cmd-card.copied .copy-btn svg{stroke:var(--green);}
+.cmd-card.copied .copy-btn{opacity:1;}
+
+.cmd-text{font-family:var(--mono);font-size:11.5px;color:var(--text);word-break:break-all;line-height:1.7;background:rgba(0,0,0,.3);border-radius:5px;padding:6px 9px;border:1px solid rgba(255,255,255,.03);}
+.kw{color:var(--blue);font-weight:600;}
+.flag{color:var(--amber);}
+.val{color:var(--green);}
+.str{color:var(--text3);}
+
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:var(--sans);font-weight:500;padding:2px 8px;border-radius:99px;margin-bottom:6px;}
+.badge-danger{background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.2);}
+.badge-warn{background:rgba(240,168,64,.1);color:#f0a840;border:1px solid rgba(240,168,64,.2);}
+.badge svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;}
+
+.cat-contexte{border-left-color:var(--cat-contexte);}
+.cat-infra{border-left-color:var(--cat-infra);}
+.cat-debug{border-left-color:var(--cat-debug);}
+.cat-cycle{border-left-color:var(--cat-cycle);}
+.cat-deploy{border-left-color:var(--cat-deploy);}
+.cat-reseau{border-left-color:var(--cat-reseau);}
+.stripe-contexte{background:var(--cat-contexte);}
+.stripe-infra{background:var(--cat-infra);}
+.stripe-debug{background:var(--cat-debug);}
+.stripe-cycle{background:var(--cat-cycle);}
+.stripe-deploy{background:var(--cat-deploy);}
+.stripe-reseau{background:var(--cat-reseau);}
+.dot-contexte{background:var(--cat-contexte);}
+.dot-infra{background:var(--cat-infra);}
+.dot-debug{background:var(--cat-debug);}
+.dot-cycle{background:var(--cat-cycle);}
+.dot-deploy{background:var(--cat-deploy);}
+.dot-reseau{background:var(--cat-reseau);}
+
+.empty{text-align:center;padding:3rem 0;color:var(--text3);font-family:var(--sans);font-size:13px;}
+
+/* Glossaire */
+.glossary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;}
+.gloss-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;transition:background .15s;border-left:3px solid transparent;}
+.gloss-card:hover{background:var(--bg3);}
+.gloss-term{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--blue);margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+.gloss-cat{font-size:9px;font-family:var(--sans);font-weight:500;padding:2px 7px;border-radius:99px;text-transform:uppercase;letter-spacing:.06em;}
+.gloss-def{font-family:var(--sans);font-size:12.5px;color:var(--text2);line-height:1.6;}
+.gloss-def strong{color:var(--text);font-weight:600;}
+.gloss-search{margin-bottom:1.5rem;}
+.gloss-search input{width:100%;padding:9px 14px 9px 38px;font-family:var(--mono);font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);outline:none;transition:border-color .15s;}
+.gloss-search input:focus{border-color:var(--blue);}
+.gloss-search input::placeholder{color:var(--text3);}
+.gloss-search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;stroke:var(--text3);fill:none;stroke-width:2;stroke-linecap:round;pointer-events:none;}
+.gloss-filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.25rem;}
+.gloss-pill{padding:4px 12px;font-size:11px;font-family:var(--sans);font-weight:500;border:1px solid var(--border);border-radius:99px;background:transparent;cursor:pointer;color:var(--text2);transition:all .15s;}
+.gloss-pill:hover{background:var(--bg3);color:var(--text);}
+.gloss-pill.active{background:var(--bg3);border-color:var(--border2);color:var(--text);}
+.cat-workload .gloss-card{border-left-color:#a78bfa;}
+.cat-reseau2  .gloss-card{border-left-color:#34d399;}
+.cat-stockage .gloss-card{border-left-color:#f0a840;}
+.cat-config   .gloss-card{border-left-color:#5b9cf6;}
+.cat-cluster  .gloss-card{border-left-color:#f87171;}
+.pill-workload{border-color:#a78bfa;color:#a78bfa;}
+.pill-reseau2 {border-color:#34d399;color:#34d399;}
+.pill-stockage{border-color:#f0a840;color:#f0a840;}
+.pill-config  {border-color:#5b9cf6;color:#5b9cf6;}
+.pill-cluster {border-color:#f87171;color:#f87171;}
+.gloss-empty{text-align:center;padding:3rem 0;color:var(--text3);font-family:var(--sans);font-size:13px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="header">
+  <div class="traffic-lights">
+    <div class="tl tl-r"></div>
+    <div class="tl tl-y"></div>
+    <div class="tl tl-g"></div>
+  </div>
+  <span class="header-title"><span>~/ </span>kubectl · AKS</span>
+  <span class="header-badge">Kit de survie</span>
+</div>
+
+<div class="search-wrap">
+  <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  <input type="text" id="search" placeholder="Rechercher une commande…" oninput="filter()" autocomplete="off">
+</div>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" onclick="setTab('all',this)"><span class="dot" style="background:var(--text3)"></span>Tout</button>
+  <button class="tab" onclick="setTab('contexte',this)"><span class="dot dot-contexte"></span>Contexte</button>
+  <button class="tab" onclick="setTab('infra',this)"><span class="dot dot-infra"></span>Inspection</button>
+  <button class="tab" onclick="setTab('debug',this)"><span class="dot dot-debug"></span>Diagnostic</button>
+  <button class="tab" onclick="setTab('cycle',this)"><span class="dot dot-cycle"></span>Cycle de vie</button>
+  <button class="tab" onclick="setTab('deploy',this)"><span class="dot dot-deploy"></span>Déploiement</button>
+  <button class="tab" onclick="setTab('reseau',this)"><span class="dot dot-reseau"></span>Réseau</button>
+  <button class="tab" onclick="setTab('glossaire',this)"><span class="dot" style="background:#a78bfa"></span>Glossaire</button>
+</div>
+
+<div class="tip-bar">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+  Cliquez sur une commande pour copier. Remplacez les <code>&lt;placeholders&gt;</code> par vos valeurs.
+</div>
+
+<div id="content"></div>
+<div id="glossary" style="display:none"></div>
+</div>
+
+<script>
+const CATS={
+  contexte:'Connexion & contexte AKS',
+  infra:'Inspection des ressources',
+  debug:'Diagnostic & dépannage',
+  cycle:'Cycle de vie des pods',
+  deploy:'Déploiement de services & containers',
+  reseau:'Réseau & ingress'
+};
+const DATA=[
+  {cat:'contexte',cmds:[
+    {l:'Connexion au cluster AKS',t:'az aks get-credentials --resource-group <rg> --name <cluster>'},
+    {l:'Lister les contextes disponibles',t:'kubectl config get-contexts'},
+    {l:'Contexte actif',t:'kubectl config current-context'},
+    {l:'Changer de contexte',t:'kubectl config use-context <nom-contexte>'},
+    {l:'Voir la config kubeconfig',t:'kubectl config view --minify'},
+    {l:'Lister les namespaces',t:'kubectl get namespaces'},
+    {l:'Fixer le namespace par défaut',t:'kubectl config set-context --current --namespace=<ns>',w:1},
+  ]},
+  {cat:'infra',cmds:[
+    {l:'Lister tous les pods',t:'kubectl get pods -A'},
+    {l:'Lister pods d\'un namespace',t:'kubectl get pods -n <namespace> -o wide'},
+    {l:'Détail d\'un pod',t:'kubectl describe pod <pod-name> -n <namespace>'},
+    {l:'Lister les déploiements',t:'kubectl get deployments -n <namespace>'},
+    {l:'Détail d\'un déploiement',t:'kubectl describe deployment <nom> -n <namespace>'},
+    {l:'Lister les services',t:'kubectl get services -n <namespace>'},
+    {l:'Lister les nœuds',t:'kubectl get nodes -o wide'},
+    {l:'Ressources consommées (pods)',t:'kubectl top pods -n <namespace>',w:1},
+    {l:'Ressources consommées (nodes)',t:'kubectl top nodes',w:1},
+    {l:'Tout voir dans un namespace',t:'kubectl get all -n <namespace>'},
+  ]},
+  {cat:'debug',cmds:[
+    {l:'Logs d\'un pod',t:'kubectl logs <pod-name> -n <namespace>'},
+    {l:'Logs en temps réel (follow)',t:'kubectl logs -f <pod-name> -n <namespace>',w:1},
+    {l:'Logs du container précédent (crash)',t:'kubectl logs <pod-name> -n <namespace> --previous',d:1},
+    {l:'Logs d\'un container spécifique',t:'kubectl logs <pod-name> -c <container> -n <namespace>'},
+    {l:'Shell interactif dans un pod',t:'kubectl exec -it <pod-name> -n <namespace> -- /bin/sh',w:1},
+    {l:'Événements du namespace',t:'kubectl get events -n <namespace> --sort-by=.lastTimestamp'},
+    {l:'Événements d\'un pod (triage)',t:'kubectl describe pod <pod-name> -n <namespace> | grep -A 10 Events'},
+    {l:'Pod de debug temporaire (busybox)',t:'kubectl run debug --image=busybox -it --rm -n <namespace>',w:1},
+    {l:'Inspecter un secret (base64)',t:"kubectl get secret <nom> -n <namespace> -o jsonpath='{.data}'"},
+    {l:'Statut du rollout',t:'kubectl rollout status deployment/<nom> -n <namespace>'},
+  ]},
+  {cat:'cycle',cmds:[
+    {l:'Supprimer un pod (force redémarrage)',t:'kubectl delete pod <pod-name> -n <namespace>',d:1},
+    {l:'Redémarrer un déploiement',t:'kubectl rollout restart deployment/<nom> -n <namespace>',w:1},
+    {l:'Scaler un déploiement',t:'kubectl scale deployment <nom> --replicas=3 -n <namespace>'},
+    {l:'Arrêter (scale à zéro)',t:'kubectl scale deployment <nom> --replicas=0 -n <namespace>',d:1},
+    {l:'Rollback version précédente',t:'kubectl rollout undo deployment/<nom> -n <namespace>',d:1},
+    {l:'Historique des rollouts',t:'kubectl rollout history deployment/<nom> -n <namespace>'},
+    {l:'Exclure un nœud (cordon)',t:'kubectl cordon <node-name>',w:1},
+    {l:'Vider un nœud (drain)',t:'kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data',d:1},
+    {l:'Réactiver un nœud (uncordon)',t:'kubectl uncordon <node-name>'},
+  ]},
+  {cat:'deploy',cmds:[
+    {l:'Appliquer un manifeste YAML',t:'kubectl apply -f deployment.yaml -n <namespace>'},
+    {l:'Supprimer via manifeste',t:'kubectl delete -f deployment.yaml -n <namespace>',d:1},
+    {l:'Créer un déploiement (image directe)',t:'kubectl create deployment <nom> --image=<image>:<tag> -n <namespace>'},
+    {l:'Exposer via ClusterIP',t:'kubectl expose deployment <nom> --port=80 --target-port=8080 -n <namespace>'},
+    {l:'Exposer via LoadBalancer (AKS)',t:'kubectl expose deployment <nom> --type=LoadBalancer --port=80 -n <namespace>'},
+    {l:'Mettre à jour l\'image',t:'kubectl set image deployment/<nom> <container>=<image>:<tag> -n <namespace>',w:1},
+    {l:'Éditer un manifeste live',t:'kubectl edit deployment <nom> -n <namespace>',w:1},
+    {l:'Appliquer un ConfigMap',t:'kubectl apply -f configmap.yaml -n <namespace>'},
+    {l:'Créer un secret générique',t:'kubectl create secret generic <nom> --from-literal=key=value -n <namespace>'},
+    {l:'Port-forward local → pod',t:'kubectl port-forward pod/<pod-name> 8080:80 -n <namespace>',w:1},
+  ]},
+  {cat:'reseau',cmds:[
+    {l:'Lister les ingress',t:'kubectl get ingress -n <namespace>'},
+    {l:'Détail d\'un ingress',t:'kubectl describe ingress <nom> -n <namespace>'},
+    {l:'Lister les HPA (autoscaling)',t:'kubectl get hpa -n <namespace>'},
+    {l:'Lister les PVC (stockage)',t:'kubectl get pvc -n <namespace>'},
+    {l:'IP externe d\'un LoadBalancer',t:"kubectl get svc <nom> -n <namespace> -o jsonpath='{.status.loadBalancer.ingress[0].ip}'"},
+    {l:'DNS interne d\'un service',t:'<svc>.<namespace>.svc.cluster.local'},
+  ]},
+];
+
+let activeTab='all',searchVal='';
+
+const COPY_ICON=`<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+const CHECK_ICON=`<svg viewBox="0 0 24 24" stroke="var(--green)"><polyline points="20 6 9 17 4 12"/></svg>`;
+const WARN_ICON=`<svg viewBox="0 0 24 24"><polygon points="10.29 3.86 1.82 18 22.18 18 13.71 3.86 10.29 3.86"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escAttr(s){return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function hl(t){
+  // Tokenizer une seule passe — consomme les mots entiers pour éviter de capter
+  // un tiret au milieu d\'un identifiant comme "get-credentials"
+  const TOKEN=/^(kubectl|az)(?=[ |]|$)|^(--[\w-]+=?)|^(-[a-zA-Z]+)(?=[ |]|$)|^(<[a-z][\w-]*>)|^('[^']*')/;
+  const WORD=/^[a-zA-Z][\w-]*/;
+  let out='', rem=t;
+  while(rem.length){
+    const m=rem.match(TOKEN);
+    if(m){
+      if(m[1])      out+=`<span class="kw">${esc(m[1])}</span>`;
+      else if(m[2]) out+=`<span class="flag">${esc(m[2])}</span>`;
+      else if(m[3]) out+=`<span class="flag">${esc(m[3])}</span>`;
+      else if(m[4]) out+=`<span class="val">${esc(m[4])}</span>`;
+      else if(m[5]) out+=`<span class="str">${esc(m[5])}</span>`;
+      rem=rem.slice(m[0].length);
+    } else {
+      const w=rem.match(WORD);
+      if(w){ out+=esc(w[0]); rem=rem.slice(w[0].length); }
+      else { out+=esc(rem[0]); rem=rem.slice(1); }
+    }
+  }
+  return out;
+}
+
+const GLOSSARY=[
+  {term:'Pod',cat:'workload',def:`Plus petite unité déployable de Kubernetes. Un pod contient <strong>un ou plusieurs containers</strong> qui partagent le même réseau et stockage. Éphémère par nature : si un pod meurt, il est recréé.`},
+  {term:'Deployment',cat:'workload',def:`Objet qui gère un ensemble de pods identiques (replicas). Il garantit que le <strong>nombre souhaité de pods</strong> tourne en permanence et orchestre les mises à jour sans coupure (rolling update).`},
+  {term:'ReplicaSet',cat:'workload',def:`Maintient un <strong>nombre fixe de pods</strong> en vie. Rarement manipulé directement — c'est le Deployment qui le gère automatiquement.`},
+  {term:'StatefulSet',cat:'workload',def:`Comme un Deployment, mais pour les workloads <strong>avec état</strong> (bases de données). Chaque pod reçoit un identifiant stable et un stockage persistant dédié.`},
+  {term:'DaemonSet',cat:'workload',def:`S'assure qu'<strong>un pod tourne sur chaque nœud</strong> du cluster. Utilisé pour les agents système : collecte de logs, monitoring, proxy réseau.`},
+  {term:'Job / CronJob',cat:'workload',def:`<strong>Job</strong> : exécute une tâche une fois jusqu'à complétion. <strong>CronJob</strong> : planifie des jobs selon une expression cron (ex: backup quotidien).`},
+  {term:'Container',cat:'workload',def:`Instance d'image Docker exécutée dans un pod. Partage le nœud OS mais est <strong>isolé par des namespaces Linux</strong> (network, PID, mount). Un pod peut en contenir plusieurs (sidecar pattern).`},
+  {term:'Image',cat:'workload',def:`Artefact immuable contenant le code et ses dépendances. Sur AKS, elle est tirée d'un registry : <strong>Azure Container Registry (ACR)</strong>, Docker Hub, ou autre.`},
+  {term:'Rolling Update',cat:'workload',def:`Stratégie de mise à jour qui <strong>remplace progressivement les anciens pods</strong> par les nouveaux, sans interruption de service. Configurable avec maxSurge et maxUnavailable.`},
+  {term:'Liveness Probe',cat:'workload',def:`Sonde que Kubernetes utilise pour savoir si un container est <strong>vivant</strong>. Si elle échoue, le container est redémarré. Exemples : HTTP GET, commande shell, TCP.`},
+  {term:'Readiness Probe',cat:'workload',def:`Sonde qui indique si un container est <strong>prêt à recevoir du trafic</strong>. Tant qu'elle échoue, le pod est retiré du load balancer du service — pas de kill, juste exclusion.`},
+  {term:'Namespace',cat:'cluster',def:`Partition logique du cluster. Permet d'<strong>isoler des équipes, environnements ou projets</strong> dans le même cluster. Les ressources d'un namespace sont invisibles des autres par défaut.`},
+  {term:'Node',cat:'cluster',def:`Machine physique ou virtuelle qui exécute les pods. AKS gère des nœuds Azure (VM). Un cluster a un ou plusieurs <strong>nœuds worker</strong> et un plan de contrôle géré par Microsoft.`},
+  {term:'Cluster',cat:'cluster',def:`Ensemble de nœuds orchestrés par Kubernetes. Composé d'un <strong>control plane</strong> (API server, scheduler, etcd) et des nœuds workers qui exécutent les pods.`},
+  {term:'Control Plane',cat:'cluster',def:`Cerveaux du cluster : <strong>API server</strong> (point d'entrée kubectl), <strong>scheduler</strong> (place les pods sur les nœuds), <strong>etcd</strong> (base de données de l'état du cluster). Sur AKS, géré par Microsoft.`},
+  {term:'kubeconfig',cat:'cluster',def:`Fichier (généralement <strong>~/.kube/config</strong>) contenant les credentials et endpoints des clusters. La commande <code>az aks get-credentials</code> y ajoute automatiquement le cluster AKS.`},
+  {term:'Context',cat:'cluster',def:`Triplet <strong>cluster + user + namespace</strong> sauvegardé dans kubeconfig. Permet de switcher rapidement entre plusieurs clusters ou environnements sans ressaisir les credentials.`},
+  {term:'Service',cat:'reseau2',def:`Expose un ensemble de pods sous <strong>une adresse IP et un DNS stables</strong>. Types : ClusterIP (interne), NodePort (accès nœud), LoadBalancer (IP publique Azure), ExternalName.`},
+  {term:'Ingress',cat:'reseau2',def:`Règle de <strong>routage HTTP/HTTPS vers les services</strong> depuis l'extérieur. Permet le virtual hosting, le path routing et le TLS termination. Nécessite un Ingress Controller.`},
+  {term:'Ingress Controller',cat:'reseau2',def:`Pod qui <strong>implémente les règles Ingress</strong>. Sur AKS, c'est souvent nginx ou l'Application Gateway Ingress Controller (AGIC). Sans lui, les ressources Ingress n'ont aucun effet.`},
+  {term:'ClusterIP',cat:'reseau2',def:`Type de service accessible <strong>uniquement à l'intérieur du cluster</strong>. Adresse IP virtuelle stable qui load-balance vers les pods cibles. Type par défaut de kubectl expose.`},
+  {term:'LoadBalancer',cat:'reseau2',def:`Type de service qui provisionne automatiquement un <strong>Azure Load Balancer avec IP publique</strong>. Le point d'entrée externe le plus simple sur AKS.`},
+  {term:'DNS interne',cat:'reseau2',def:`Chaque service est accessible via <strong>&lt;svc&gt;.&lt;namespace&gt;.svc.cluster.local</strong>. Kubernetes embarque CoreDNS pour résoudre ces noms entre pods sans configuration supplémentaire.`},
+  {term:'PVC',cat:'stockage',def:`<strong>PersistentVolumeClaim</strong> : demande de stockage persistant faite par un pod. Sur AKS, provisionne dynamiquement un <strong>Azure Disk ou Azure Files</strong>. Les données survivent au redémarrage du pod.`},
+  {term:'PV',cat:'stockage',def:`<strong>PersistentVolume</strong> : ressource de stockage physique dans le cluster (Azure Disk, NFS…). Appairé à un PVC. Cycle de vie indépendant du pod qui le consomme.`},
+  {term:'StorageClass',cat:'stockage',def:`Définit le <strong>type de stockage à provisionner</strong> automatiquement lors d'un PVC. Sur AKS : <em>managed-csi</em> (Azure Disk SSD), <em>azurefile-csi</em> (partage de fichiers).`},
+  {term:'ConfigMap',cat:'config',def:`Stocke des <strong>données de configuration non sensibles</strong> (variables d'env, fichiers de conf) découplées du container. Les pods les montent comme variables d'environnement ou volumes.`},
+  {term:'Secret',cat:'config',def:`Stocke des <strong>données sensibles</strong> (mots de passe, tokens, certificats) encodées en base64. À coupler avec Azure Key Vault via le CSI driver pour une sécurité renforcée sur AKS.`},
+  {term:'HPA',cat:'config',def:`<strong>Horizontal Pod Autoscaler</strong> : ajuste automatiquement le <strong>nombre de replicas</strong> en fonction de métriques (CPU, mémoire, métriques custom). Réagit à la charge en temps réel.`},
+  {term:'ResourceQuota',cat:'config',def:`Limite les <strong>ressources totales</strong> consommables par un namespace : nombre de pods, CPU, mémoire. Outil de gouvernance essentiel dans un cluster partagé.`},
+  {term:'ServiceAccount',cat:'config',def:`Identité attribuée aux pods pour s'<strong>authentifier auprès de l'API Kubernetes</strong> et des services Azure (RBAC, Key Vault). Préférer les identités managées (Workload Identity) sur AKS.`},
+];
+
+const GLOSS_CATS={all:'Tous',workload:'Workload',reseau2:'Réseau',stockage:'Stockage',config:'Config & RBAC',cluster:'Cluster'};
+let glossSearch='',glossCat='all';
+
+function renderGlossary(search,cat){
+  glossSearch=search; glossCat=cat;
+  const q=search.toLowerCase();
+  const filtered=GLOSSARY.filter(g=>(cat==='all'||g.cat===cat)&&(!q||g.term.toLowerCase().includes(q)||g.def.toLowerCase().includes(q)));
+  let html=`<div style="position:relative" class="gloss-search">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" placeholder="Rechercher un terme…" value="${search.replace(/"/g,'&quot;')}" oninput="renderGlossary(this.value,'${cat}')" autocomplete="off">
+  </div>
+  <div class="gloss-filter">`;
+  for(const[k,v] of Object.entries(GLOSS_CATS)){
+    const active=k===cat?'active':'';
+    const pill=k==='all'?'':'pill-'+k;
+    html+=`<button class="gloss-pill ${pill} ${active}" onclick="renderGlossary('${search}','${k}')">${v} ${k==='all'?'('+GLOSSARY.length+')':'('+GLOSSARY.filter(g=>g.cat===k).length+')'}</button>`;
+  }
+  html+='</div>';
+  if(!filtered.length){
+    html+=`<div class="gloss-empty">Aucun terme pour "${search}"</div>`;
+  } else {
+    html+='<div class="glossary-grid">';
+    for(const g of filtered){
+      const catLabel=GLOSS_CATS[g.cat]||g.cat;
+      html+=`<div class="gloss-card cat-${g.cat}">
+        <div class="gloss-term">${g.term} <span class="gloss-cat pill-${g.cat}" style="background:transparent;border:1px solid currentColor;opacity:.7">${catLabel}</span></div>
+        <div class="gloss-def">${g.def}</div>
+      </div>`;
+    }
+    html+='</div>';
+  }
+  document.getElementById('glossary').innerHTML=html;
+}
+
+function render(){
+  const q=searchVal.toLowerCase();
+  let html='';
+  for(const sec of DATA){
+    if(activeTab!=='all'&&sec.cat!==activeTab) continue;
+    const filtered=sec.cmds.filter(c=>!q||c.l.toLowerCase().includes(q)||c.t.toLowerCase().includes(q));
+    if(!filtered.length) continue;
+    html+=`<div class="section">
+      <div class="section-header">
+        <div class="section-stripe stripe-${sec.cat}"></div>
+        <span class="section-title">${CATS[sec.cat]}</span>
+        <span class="section-count">${filtered.length}</span>
+      </div>
+      <div class="cmd-grid">`;
+    for(const cmd of filtered){
+      const badge=cmd.d?`<div><span class="badge badge-danger">${WARN_ICON}destructif</span></div>`
+        :cmd.w?`<div><span class="badge badge-warn">${WARN_ICON}attention</span></div>`:'';
+      html+=`<div class="cmd-card cat-${sec.cat}" data-cmd="${escAttr(cmd.t)}" onclick="copyCmd(this)">
+        <div class="cmd-top">
+          <span class="cmd-label">${cmd.l}</span>
+          <span class="copy-btn">${COPY_ICON}</span>
+        </div>
+        ${badge}
+        <div class="cmd-text">${hl(cmd.t)}</div>
+      </div>`;
+    }
+    html+=`</div></div>`;
+  }
+  if(!html) html=`<div class="empty">Aucune commande pour "${searchVal}"</div>`;
+  document.getElementById('content').innerHTML=html;
+}
+
+function setTab(cat,el){
+  activeTab=cat;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  const isGloss=cat==='glossaire';
+  document.getElementById('content').style.display=isGloss?'none':'';
+  document.getElementById('glossary').style.display=isGloss?'':'none';
+  document.querySelector('.tip-bar').style.display=isGloss?'none':'';
+  document.querySelector('.search-wrap').style.display=isGloss?'none':'';
+  if(isGloss) renderGlossary('','all');
+  else render();
+}
+
+function filter(){
+  searchVal=document.getElementById('search').value;
+  render();
+}
+
+async function copyCmd(el){
+  const text=el.dataset.cmd;
+  try{ await navigator.clipboard.writeText(text); }catch(e){}
+  el.classList.add('copied');
+  const btn=el.querySelector('.copy-btn');
+  btn.innerHTML=CHECK_ICON;
+  setTimeout(()=>{
+    el.classList.remove('copied');
+    btn.innerHTML=COPY_ICON;
+  },1500);
+}
+
+render();
+</script>
+</body>
+</html>

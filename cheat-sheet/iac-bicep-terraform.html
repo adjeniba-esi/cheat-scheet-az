@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Bicep · Terraform — Kit de survie IaC</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --mono:'JetBrains Mono',monospace;--sans:'DM Sans',sans-serif;
+  --bg:#0f1117;--bg2:#181c27;--bg3:#1e2433;--bg4:#242b3d;
+  --border:#2a3148;--border2:#3a4560;
+  --text:#e8eaf0;--text2:#8b92a8;--text3:#555e7a;
+  --blue:#5b9cf6;--amber:#f0a840;--green:#4ade80;
+  --red:#f87171;--purple:#a78bfa;--teal:#34d399;--cyan:#67e8f9;
+  --bicep:#5b9cf6;--tf:#a78bfa;
+  --cat-init:var(--teal);--cat-plan:var(--blue);--cat-apply:var(--red);
+  --cat-state:var(--amber);--cat-ws:var(--purple);--cat-debug:var(--green);
+  --cat-binstall:var(--teal);--cat-bbuild:var(--blue);--cat-bdeploy:var(--bicep);
+  --cat-bwhatif:var(--amber);--cat-bmodule:var(--purple);
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;padding:2rem 1.5rem;}
+.wrap{max-width:1100px;margin:0 auto;}
+
+/* Header */
+.header{display:flex;align-items:center;gap:16px;margin-bottom:2rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border);}
+.tls{display:flex;gap:7px;}.tl{width:12px;height:12px;border-radius:50%;}
+.tl-r{background:#f87171;}.tl-y{background:#f0a840;}.tl-g{background:#4ade80;}
+.htitle{font-family:var(--mono);font-size:18px;font-weight:600;letter-spacing:-.03em;}
+.htitle span{color:var(--text3);}
+.hbadges{display:flex;gap:8px;margin-left:auto;}
+.hbadge{font-family:var(--mono);font-size:11px;padding:3px 10px;border-radius:99px;border:1px solid;}
+.hb-bicep{color:var(--bicep);border-color:rgba(91,156,246,.3);}
+.hb-tf{color:var(--tf);border-color:rgba(167,139,250,.3);}
+
+/* Top tabs */
+.top-tabs{display:flex;gap:0;margin-bottom:1.5rem;border-bottom:1px solid var(--border);}
+.ttab{padding:10px 22px;font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;color:var(--text2);background:transparent;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;}
+.ttab:hover{color:var(--text);}
+.ttab.ab{color:var(--bicep);border-bottom-color:var(--bicep);}
+.ttab.at{color:var(--tf);border-bottom-color:var(--tf);}
+.ttab.ag{color:var(--teal);border-bottom-color:var(--teal);}
+.ttab.af{color:var(--amber);border-bottom-color:var(--amber);}
+
+/* Panels */
+.panel{display:none;}.panel.active{display:block;}
+
+/* Search + tip */
+.sbar{position:relative;margin-bottom:1.25rem;}
+.sbar svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;stroke:var(--text3);fill:none;stroke-width:2;stroke-linecap:round;pointer-events:none;}
+.sbar input{width:100%;padding:9px 14px 9px 38px;font-family:var(--mono);font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);outline:none;transition:border-color .15s;}
+.sbar input:focus{border-color:var(--blue);}.sbar input::placeholder{color:var(--text3);}
+.tipbar{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;margin-bottom:1.5rem;font-size:12px;color:var(--text2);}
+.tipbar svg{width:14px;height:14px;stroke:var(--text3);fill:none;stroke-width:2;flex-shrink:0;}
+.tipbar code{font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(74,222,128,.08);padding:1px 5px;border-radius:4px;}
+
+/* Cat tabs */
+.ctabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.5rem;}
+.ctab{display:flex;align-items:center;gap:6px;padding:5px 12px;font-size:11px;font-family:var(--sans);font-weight:500;border:1px solid var(--border);border-radius:99px;background:transparent;cursor:pointer;color:var(--text2);transition:all .15s;}
+.ctab .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.ctab:hover{background:var(--bg2);color:var(--text);}
+.ctab.active{background:var(--bg3);border-color:var(--border2);color:var(--text);font-weight:600;}
+
+/* Command cards */
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;}
+.ccard{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:11px 13px 11px 15px;cursor:pointer;transition:border-color .15s,transform .1s,background .15s;border-left-width:3px;}
+.ccard:hover{background:var(--bg3);border-color:var(--border2);transform:translateY(-1px);}
+.ccard.copied{border-color:var(--green)!important;}
+.ctop{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;}
+.clbl{font-family:var(--sans);font-size:11.5px;font-weight:500;color:var(--text2);line-height:1.4;}
+.cpbtn{flex-shrink:0;opacity:0;transition:opacity .15s;}
+.cpbtn svg{width:13px;height:13px;stroke:var(--text3);fill:none;stroke-width:2;stroke-linecap:round;}
+.ccard:hover .cpbtn{opacity:1;}.ccard.copied .cpbtn svg{stroke:var(--green);}.ccard.copied .cpbtn{opacity:1;}
+.cmdtext{font-family:var(--mono);font-size:11.5px;color:var(--text);word-break:break-all;line-height:1.7;background:rgba(0,0,0,.3);border-radius:5px;padding:6px 9px;border:1px solid rgba(255,255,255,.03);}
+.kw{color:var(--blue);font-weight:600;}.kw-tf{color:var(--tf);font-weight:600;}
+.flag{color:var(--amber);}.val{color:var(--green);}.str{color:var(--text3);}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:var(--sans);font-weight:500;padding:2px 8px;border-radius:99px;margin-bottom:6px;}
+.badge svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;}
+.bd{background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.2);}
+.bw{background:rgba(240,168,64,.1);color:#f0a840;border:1px solid rgba(240,168,64,.2);}
+.sec-hdr{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.sec-stripe{width:3px;height:18px;border-radius:2px;flex-shrink:0;}
+.sec-title{font-family:var(--sans);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);}
+.sec-count{font-family:var(--mono);font-size:10px;color:var(--text3);margin-left:auto;background:var(--bg3);border:1px solid var(--border);border-radius:99px;padding:1px 8px;}
+.section{margin-bottom:2.5rem;}
+.empty{text-align:center;padding:3rem 0;color:var(--text3);font-family:var(--sans);font-size:13px;}
+
+/* ── Fichiers panel ── */
+.ftool-toggle{display:flex;gap:6px;margin-bottom:1.5rem;}
+.ftbtn{padding:7px 18px;font-family:var(--sans);font-size:13px;font-weight:500;border:1px solid var(--border);border-radius:8px;background:transparent;cursor:pointer;color:var(--text2);transition:all .15s;}
+.ftbtn:hover{background:var(--bg2);}.ftbtn.fb{color:var(--bicep);border-color:rgba(91,156,246,.4);background:rgba(91,156,246,.06);}
+.ftbtn.ft{color:var(--tf);border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.06);}
+
+.sc-list{display:flex;flex-direction:column;gap:10px;}
+.sc-item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color .15s;}
+.sc-item.open{border-color:var(--border2);}
+.sc-hdr{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;user-select:none;}
+.sc-hdr:hover{background:var(--bg3);}
+.sc-num{font-family:var(--mono);font-size:11px;color:var(--text3);min-width:20px;}
+.sc-title{font-family:var(--sans);font-size:14px;font-weight:600;color:var(--text);}
+.sc-desc{font-family:var(--sans);font-size:12px;color:var(--text2);margin-top:2px;}
+.sc-chevron{margin-left:auto;font-size:18px;color:var(--text3);transition:transform .2s;line-height:1;}
+.sc-item.open .sc-chevron{transform:rotate(90deg);}
+.sc-body{display:none;border-top:1px solid var(--border);padding:16px;}
+.sc-item.open .sc-body{display:block;}
+
+/* File tabs */
+.ftabs-bar{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;}
+.ftab-btn{padding:4px 12px;font-family:var(--mono);font-size:11px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;color:var(--text2);transition:all .15s;}
+.ftab-btn:hover{background:var(--bg3);color:var(--text);}
+.ftab-btn.active{background:var(--bg4);border-color:var(--border2);color:var(--text);}
+.fcode-block{display:none;}.fcode-block.active{display:block;}
+.code-wrap{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.05);border-radius:8px;overflow:hidden;margin-bottom:12px;}
+.code-hdr{display:flex;align-items:center;padding:8px 12px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.05);font-family:var(--mono);font-size:11px;color:var(--text3);}
+.code-fname{color:var(--text2);}
+.code-lang{margin-left:8px;padding:1px 6px;border-radius:99px;font-size:10px;background:rgba(255,255,255,.06);}
+.code-cpbtn{margin-left:auto;cursor:pointer;font-size:12px;color:var(--text3);background:none;border:none;padding:2px 6px;border-radius:4px;transition:all .15s;font-family:var(--mono);}
+.code-cpbtn:hover{background:rgba(255,255,255,.08);color:var(--text);}
+pre{padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--text);}
+
+/* Code syntax colors */
+.c-kw{color:var(--blue);font-weight:600;}.c-kw-tf{color:var(--purple);font-weight:600;}
+.c-type{color:var(--cyan);}.c-str{color:var(--green);}.c-comment{color:var(--text3);font-style:italic;}
+.c-dec{color:var(--amber);}.c-val{color:var(--red);}.c-key{color:var(--text);}
+.c-sym{color:var(--text2);}.c-interp{color:var(--teal);}
+
+/* Commands in fichiers */
+.sc-cmds{margin-top:14px;border-top:1px solid var(--border);padding-top:14px;}
+.sc-cmds-title{font-family:var(--sans);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:8px;}
+.sc-cmd-row{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;background:rgba(0,0,0,.3);border-radius:6px;margin-bottom:6px;cursor:pointer;border:1px solid transparent;transition:border-color .15s;}
+.sc-cmd-row:hover{border-color:var(--border2);}
+.sc-cmd-row.copied{border-color:var(--green);}
+.sc-cmd-lbl{font-family:var(--sans);font-size:11px;color:var(--text2);white-space:nowrap;min-width:120px;margin-top:2px;}
+.sc-cmd-val{font-family:var(--mono);font-size:11.5px;color:var(--text);flex:1;word-break:break-all;line-height:1.6;}
+.sc-cmd-cp{flex-shrink:0;opacity:0;transition:opacity .15s;}
+.sc-cmd-cp svg{width:12px;height:12px;stroke:var(--text3);fill:none;stroke-width:2;}
+.sc-cmd-row:hover .sc-cmd-cp{opacity:1;}
+.sc-cmd-row.copied .sc-cmd-cp svg{stroke:var(--green);}
+.sc-cmd-row.copied .sc-cmd-cp{opacity:1;}
+
+/* Glossaire */
+.gloss-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;}
+.g-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;border-left:3px solid transparent;transition:background .15s;}
+.g-card:hover{background:var(--bg3);}
+.g-term{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--blue);margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.g-badge{font-size:9px;font-family:var(--sans);font-weight:500;padding:2px 7px;border-radius:99px;text-transform:uppercase;letter-spacing:.06em;border:1px solid;}
+.gb-bicep{color:var(--bicep);border-color:rgba(91,156,246,.4);}
+.gb-tf{color:var(--tf);border-color:rgba(167,139,250,.4);}
+.gb-both{color:var(--teal);border-color:rgba(52,211,153,.4);}
+.gb-azure{color:var(--bicep);border-color:rgba(91,156,246,.4);}
+.g-def{font-family:var(--sans);font-size:12.5px;color:var(--text2);line-height:1.6;}
+.g-def strong{color:var(--text);font-weight:600;}
+.g-def code{font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(74,222,128,.08);padding:1px 5px;border-radius:3px;}
+.gpills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.25rem;}
+.gpill{padding:4px 12px;font-size:11px;font-family:var(--sans);font-weight:500;border:1px solid var(--border);border-radius:99px;background:transparent;cursor:pointer;color:var(--text2);transition:all .15s;}
+.gpill:hover{background:var(--bg3);color:var(--text);}.gpill.active{background:var(--bg3);border-color:var(--border2);color:var(--text);}
+.gc-azure{border-left-color:var(--bicep);}.gc-tf{border-left-color:var(--tf);}
+.gc-both{border-left-color:var(--teal);}.gc-bicep{border-left-color:var(--bicep);}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="header">
+  <div class="tls"><div class="tl tl-r"></div><div class="tl tl-y"></div><div class="tl tl-g"></div></div>
+  <span class="htitle"><span>~/ </span>IaC Azure</span>
+  <div class="hbadges">
+    <span class="hbadge hb-bicep">Bicep</span>
+    <span class="hbadge hb-tf">Terraform</span>
+  </div>
+</div>
+
+<div class="top-tabs">
+  <button class="ttab ab" onclick="switchTop('bicep',this)">Bicep</button>
+  <button class="ttab" onclick="switchTop('terraform',this)">Terraform</button>
+  <button class="ttab" onclick="switchTop('fichiers',this)">Fichiers config</button>
+  <button class="ttab" onclick="switchTop('glossaire',this)">Glossaire</button>
+</div>
+
+<!-- BICEP -->
+<div id="panel-bicep" class="panel active">
+  <div class="sbar">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" placeholder="Rechercher une commande Bicep…" oninput="filterCmds('bicep',this.value)" autocomplete="off">
+  </div>
+  <div class="tipbar">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    Cliquez pour copier. Remplacez les <code>&lt;placeholders&gt;</code> par vos valeurs.
+  </div>
+  <div class="ctabs" id="ctabs-bicep"></div>
+  <div id="cmds-bicep"></div>
+</div>
+
+<!-- TERRAFORM -->
+<div id="panel-terraform" class="panel">
+  <div class="sbar">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" placeholder="Rechercher une commande Terraform…" oninput="filterCmds('terraform',this.value)" autocomplete="off">
+  </div>
+  <div class="tipbar">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    Cliquez pour copier. Remplacez les <code>&lt;placeholders&gt;</code> par vos valeurs.
+  </div>
+  <div class="ctabs" id="ctabs-terraform"></div>
+  <div id="cmds-terraform"></div>
+</div>
+
+<!-- FICHIERS CONFIG -->
+<div id="panel-fichiers" class="panel">
+  <div class="ftool-toggle">
+    <button class="ftbtn fb" onclick="setFileTool('bicep',this)">Bicep</button>
+    <button class="ftbtn" onclick="setFileTool('terraform',this)">Terraform</button>
+  </div>
+  <div id="fscenarios-bicep" class="sc-list"></div>
+  <div id="fscenarios-terraform" class="sc-list" style="display:none"></div>
+</div>
+
+<!-- GLOSSAIRE -->
+<div id="panel-glossaire" class="panel">
+  <div class="sbar">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" placeholder="Rechercher un terme…" oninput="filterGloss(this.value)" autocomplete="off">
+  </div>
+  <div class="gpills" id="gpills"></div>
+  <div id="gloss-content"></div>
+</div>
+</div>
+
+<script>
+
+const BICEP_SCENARIOS=[{id:"base",title:"Structure de base",desc:"Squelette complet : param\u00e8tres typ\u00e9s, variables, ressource, outputs et fichier de param\u00e8tres.",files:[{name:"main.bicep",lang:"bicep",code:"targetScope = 'resourceGroup'\n\n// \u2500\u2500 Param\u00e8tres \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n@description('R\u00e9gion Azure (h\u00e9rite du RG par d\u00e9faut)')\nparam location string = resourceGroup().location\n\n@description('Nom court du projet \u2014 utilis\u00e9 dans les noms de ressources')\n@minLength(2)\n@maxLength(10)\nparam projectName string\n\n@description('Environnement cible')\n@allowed(['dev','staging','prod'])\nparam env string = 'dev'\n\n// \u2500\u2500 Variables \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nvar tags = {\n  project: projectName\n  environment: env\n  managedBy: 'bicep'\n}\n\n// \u2500\u2500 Ressource \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nresource storage 'Microsoft.Storage/storageAccounts@2023-01-01' = {\n  name: 'st${projectName}${env}'\n  location: location\n  tags: tags\n  sku: { name: 'Standard_LRS' }\n  kind: 'StorageV2'\n  properties: {\n    minimumTlsVersion: 'TLS1_2'\n    allowBlobPublicAccess: false\n  }\n}\n\n// \u2500\u2500 Outputs \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\noutput storageId   string = storage.id\noutput storageName string = storage.name"},{name:"params.bicepparam",lang:"bicep",code:"using 'main.bicep'\n\nparam projectName = 'mapaq'\nparam env         = 'prod'\n// location h\u00e9rite la valeur par d\u00e9faut (resourceGroup().location)"},{name:"params.json",lang:"json",code:"{\n  \"$schema\": \"https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#\",\n  \"contentVersion\": \"1.0.0.0\",\n  \"parameters\": {\n    \"projectName\": { \"value\": \"mapaq\" },\n    \"env\":         { \"value\": \"prod\"  }\n  }\n}"}],cmds:[{label:"D\u00e9ployer avec .bicepparam",cmd:"az deployment group create --resource-group <rg> --template-file main.bicep --parameters @params.bicepparam"},{label:"D\u00e9ployer avec .json",cmd:"az deployment group create --resource-group <rg> --template-file main.bicep --parameters @params.json"},{label:"Pr\u00e9visualiser (what-if)",cmd:"az deployment group what-if --resource-group <rg> --template-file main.bicep --parameters @params.bicepparam"}]},{id:"add",title:"Ajouter une ressource",desc:"Ajouter un Key Vault \u00e0 un d\u00e9ploiement existant. Le red\u00e9ploiement est idempotent : le Storage Account d\u00e9j\u00e0 pr\u00e9sent n'est pas recr\u00e9\u00e9.",files:[{name:"main.bicep",lang:"bicep",code:"targetScope = 'resourceGroup'\n\nparam location string = resourceGroup().location\nparam projectName string\n@allowed(['dev','staging','prod'])\nparam env string = 'dev'\n\n@description('Object ID AAD de l'\u00e9quipe ops (pour les access policies)')\nparam opsTeamObjectId string\n\nvar tags = { project: projectName, environment: env, managedBy: 'bicep' }\n\n// \u2500\u2500 Ressource existante (inchang\u00e9e) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nresource storage 'Microsoft.Storage/storageAccounts@2023-01-01' = {\n  name: 'st${projectName}${env}'\n  location: location\n  tags: tags\n  sku: { name: 'Standard_LRS' }\n  kind: 'StorageV2'\n  properties: { minimumTlsVersion: 'TLS1_2', allowBlobPublicAccess: false }\n}\n\n// \u2500\u2500 Nouvelle ressource ajout\u00e9e \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nresource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {\n  name: 'kv-${projectName}-${env}'\n  location: location\n  tags: tags\n  properties: {\n    sku: { family: 'A', name: 'standard' }\n    tenantId: subscription().tenantId\n    enableSoftDelete: true\n    softDeleteRetentionInDays: 90\n    accessPolicies: [\n      {\n        tenantId: subscription().tenantId\n        objectId: opsTeamObjectId\n        permissions: { secrets: ['get','list'], keys: ['get','list'] }\n      }\n    ]\n  }\n}\n\noutput keyVaultUri string = keyVault.properties.vaultUri"},{name:"params.bicepparam",lang:"bicep",code:"using 'main.bicep'\n\nparam projectName    = 'mapaq'\nparam env            = 'prod'\nparam opsTeamObjectId = '<object-id-aad>'"}],cmds:[{label:"Red\u00e9ployer (idempotent \u2014 seul le KV est cr\u00e9\u00e9)",cmd:"az deployment group create --resource-group <rg> --template-file main.bicep --parameters @params.bicepparam"},{label:"Valider d'abord",cmd:"az deployment group validate --resource-group <rg> --template-file main.bicep --parameters @params.bicepparam"}]},{id:"modify",title:"Modifier une ressource",desc:"Changer le SKU d'un Storage Account (LRS \u2192 GRS). What-if montre l'impact avant d'appliquer.",files:[{name:"main.bicep",lang:"bicep",code:"targetScope = 'resourceGroup'\n\nparam location string = resourceGroup().location\nparam projectName string\n@allowed(['dev','staging','prod'])\nparam env string = 'dev'\n\n// \u2500\u2500 SKU param\u00e9tr\u00e9 pour permettre la modification \u2500\u2500\u2500\u2500\u2500\n@allowed(['Standard_LRS','Standard_GRS','Standard_ZRS','Premium_LRS'])\nparam storageSku string = 'Standard_LRS'\n\nvar tags = { project: projectName, environment: env, managedBy: 'bicep' }\n\nresource storage 'Microsoft.Storage/storageAccounts@2023-01-01' = {\n  name: 'st${projectName}${env}'\n  location: location\n  tags: tags\n  // Modifier ici : Standard_LRS \u2192 Standard_GRS pour la prod\n  sku: { name: storageSku }\n  kind: 'StorageV2'\n  properties: { minimumTlsVersion: 'TLS1_2', allowBlobPublicAccess: false }\n}\n\noutput storageId string = storage.id"},{name:"params.bicepparam",lang:"bicep",code:"using 'main.bicep'\n\nparam projectName = 'mapaq'\nparam env         = 'prod'\n// Modification : on passe de LRS \u00e0 GRS pour la r\u00e9silience en prod\nparam storageSku  = 'Standard_GRS'"}],cmds:[{label:"1. Voir l'impact avant tout",cmd:"az deployment group what-if --resource-group <rg> --template-file main.bicep --parameters @params.bicepparam"},{label:"2. Appliquer la modification",cmd:"az deployment group create --resource-group <rg> --template-file main.bicep --parameters @params.bicepparam"}]},{id:"params",title:"Param\u00e9trage avanc\u00e9",desc:"Decorators de validation, param\u00e8tre s\u00e9curis\u00e9 (@secure), valeurs par d\u00e9faut conditionnelles.",files:[{name:"main.bicep",lang:"bicep",code:"targetScope = 'resourceGroup'\n\nparam location string = resourceGroup().location\n\n@description('Nom court du projet (2-10 car., minuscules)')\n@minLength(2)\n@maxLength(10)\nparam projectName string\n\n@description('Environnement cible')\n@allowed(['dev','staging','prod'])\nparam env string = 'dev'\n\n@description('Mot de passe admin SQL \u2014 ne jamais mettre en clair dans params.json')\n@secure()\nparam sqlAdminPassword string\n\n@description('SKU Storage \u2014 GRS forc\u00e9 en prod')\nparam storageSku string = env == 'prod' ? 'Standard_GRS' : 'Standard_LRS'\n\n@description('Nombre de replicas App Service')\n@minValue(1)\n@maxValue(10)\nparam appInstanceCount int = env == 'prod' ? 2 : 1\n\nvar prefix = '${projectName}-${env}'\nvar tags   = { project: projectName, environment: env, managedBy: 'bicep' }\n\nresource storage 'Microsoft.Storage/storageAccounts@2023-01-01' = {\n  name: 'st${projectName}${env}'\n  location: location\n  tags: tags\n  sku: { name: storageSku }\n  kind: 'StorageV2'\n  properties: { minimumTlsVersion: 'TLS1_2', allowBlobPublicAccess: false }\n}\n\nresource appPlan 'Microsoft.Web/serverfarms@2022-09-01' = {\n  name: 'asp-${prefix}'\n  location: location\n  tags: tags\n  sku: { name: env == 'prod' ? 'P1v3' : 'B1' }\n  properties: { reserved: true }\n}\n\noutput storageName  string = storage.name\noutput appPlanId    string = appPlan.id"},{name:"params.prod.bicepparam",lang:"bicep",code:"using 'main.bicep'\n\nparam projectName      = 'mapaq'\nparam env              = 'prod'\n// sqlAdminPassword lu depuis Key Vault ou pass\u00e9 via pipeline CI/CD :\n// az deployment group create ... --parameters sqlAdminPassword=$SECRET\n// NE PAS stocker un mot de passe en clair ici"},{name:"params.dev.bicepparam",lang:"bicep",code:"using 'main.bicep'\n\nparam projectName     = 'mapaq'\nparam env             = 'dev'\nparam sqlAdminPassword = 'DevOnly_ChangeInProd!'\nparam appInstanceCount = 1"}],cmds:[{label:"Prod (mot de passe via env var)",cmd:"az deployment group create --resource-group <rg> --template-file main.bicep --parameters @params.prod.bicepparam sqlAdminPassword=$SQL_PASSWORD"},{label:"Dev (tout dans le fichier)",cmd:"az deployment group create --resource-group <rg> --template-file main.bicep --parameters @params.dev.bicepparam"}]},{id:"module",title:"Modules r\u00e9utilisables",desc:"Extraire une ressource dans un module local, l'appeler depuis main.bicep avec des param\u00e8tres.",files:[{name:"main.bicep",lang:"bicep",code:"targetScope = 'resourceGroup'\n\nparam location string = resourceGroup().location\nparam projectName string\n@allowed(['dev','staging','prod'])\nparam env string = 'dev'\n\n// \u2500\u2500 Appel du module Storage \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nmodule storageModule './modules/storage.bicep' = {\n  name: 'storageDeployment'\n  params: {\n    location: location\n    projectName: projectName\n    env: env\n    sku: env == 'prod' ? 'Standard_GRS' : 'Standard_LRS'\n  }\n}\n\n// \u2500\u2500 Appel du module App Service \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nmodule appModule './modules/appservice.bicep' = {\n  name: 'appDeployment'\n  params: {\n    location: location\n    projectName: projectName\n    env: env\n  }\n}\n\n// \u2500\u2500 Outputs depuis les modules \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\noutput storageId string = storageModule.outputs.storageId\noutput appUrl    string = appModule.outputs.defaultHostname"},{name:"modules/storage.bicep",lang:"bicep",code:"// Module r\u00e9utilisable \u2014 Storage Account\nparam location string\nparam projectName string\nparam env string\n@allowed(['Standard_LRS','Standard_GRS','Standard_ZRS'])\nparam sku string = 'Standard_LRS'\n\nvar tags = { project: projectName, environment: env, managedBy: 'bicep' }\n\nresource storage 'Microsoft.Storage/storageAccounts@2023-01-01' = {\n  name: 'st${projectName}${env}'\n  location: location\n  tags: tags\n  sku: { name: sku }\n  kind: 'StorageV2'\n  properties: { minimumTlsVersion: 'TLS1_2', allowBlobPublicAccess: false }\n}\n\noutput storageId   string = storage.id\noutput storageName string = storage.name"},{name:"params.bicepparam",lang:"bicep",code:"using 'main.bicep'\n\nparam projectName = 'mapaq'\nparam env         = 'prod'"}],cmds:[{label:"D\u00e9ployer (modules r\u00e9solus automatiquement)",cmd:"az deployment group create --resource-group <rg> --template-file main.bicep --parameters @params.bicepparam"},{label:"Publier un module dans ACR",cmd:"az bicep publish --file modules/storage.bicep --target br:<registry>.azurecr.io/bicep/storage:v1.0"}]}];
+const TF_SCENARIOS=[{id:"base",title:"Structure de base",desc:"Organisation standard des fichiers Terraform avec backend Azure Blob, variables et outputs.",files:[{name:"main.tf",lang:"hcl",code:"terraform {\n  required_version = \">= 1.5\"\n  required_providers {\n    azurerm = {\n      source  = \"hashicorp/azurerm\"\n      version = \"~> 3.90\"\n    }\n  }\n}\n\nprovider \"azurerm\" {\n  features {}\n  subscription_id = var.subscription_id\n}\n\n# \u2500\u2500 Resource Group \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nresource \"azurerm_resource_group\" \"main\" {\n  name     = \"rg-${var.project}-${var.env}\"\n  location = var.location\n  tags     = local.tags\n}\n\n# \u2500\u2500 Storage Account \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nresource \"azurerm_storage_account\" \"main\" {\n  name                     = \"st${var.project}${var.env}\"\n  resource_group_name      = azurerm_resource_group.main.name\n  location                 = azurerm_resource_group.main.location\n  account_tier             = \"Standard\"\n  account_replication_type = \"LRS\"\n  min_tls_version          = \"TLS1_2\"\n  tags                     = local.tags\n}\n\n# \u2500\u2500 Locals \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nlocals {\n  tags = {\n    project     = var.project\n    environment = var.env\n    managed_by  = \"terraform\"\n  }\n}"},{name:"variables.tf",lang:"hcl",code:"variable \"subscription_id\" {\n  type        = string\n  description = \"ID de la subscription Azure cible\"\n}\n\nvariable \"project\" {\n  type        = string\n  description = \"Nom court du projet (ex: mapaq)\"\n  validation {\n    condition     = length(var.project) >= 2 && length(var.project) <= 10\n    error_message = \"project doit faire entre 2 et 10 caract\u00e8res.\"\n  }\n}\n\nvariable \"env\" {\n  type        = string\n  description = \"Environnement (dev | staging | prod)\"\n  default     = \"dev\"\n  validation {\n    condition     = contains([\"dev\", \"staging\", \"prod\"], var.env)\n    error_message = \"env doit \u00eatre dev, staging ou prod.\"\n  }\n}\n\nvariable \"location\" {\n  type    = string\n  default = \"canadaeast\"\n}"},{name:"outputs.tf",lang:"hcl",code:"output \"resource_group_name\" {\n  value = azurerm_resource_group.main.name\n}\n\noutput \"storage_id\" {\n  value = azurerm_storage_account.main.id\n}\n\noutput \"storage_primary_endpoint\" {\n  description = \"Endpoint Blob principal\"\n  value       = azurerm_storage_account.main.primary_blob_endpoint\n}"},{name:"prod.tfvars",lang:"hcl",code:"subscription_id = \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\"\nproject         = \"mapaq\"\nenv             = \"prod\"\nlocation        = \"canadaeast\" "},{name:"backend.tf",lang:"hcl",code:"# Stockage du state dans Azure Blob (\u00e0 initialiser avec terraform init -backend-config)\nterraform {\n  backend \"azurerm\" {\n    resource_group_name  = \"rg-terraform-state\"\n    storage_account_name = \"sttfstatemapaq\"\n    container_name       = \"tfstate\"\n    key                  = \"prod.terraform.tfstate\"\n  }\n}"}],cmds:[{label:"1. Initialiser",cmd:"terraform init"},{label:"2. Pr\u00e9visualiser",cmd:"terraform plan -var-file=prod.tfvars"},{label:"3. Appliquer",cmd:"terraform apply -var-file=prod.tfvars"},{label:"Init avec backend config s\u00e9par\u00e9",cmd:"terraform init -backend-config=\"key=prod.terraform.tfstate\""}]},{id:"add",title:"Ajouter une ressource",desc:"Ajouter un Key Vault \u00e0 l'infra existante. Terraform calcule automatiquement le diff \u2014 seul le KV sera cr\u00e9\u00e9.",files:[{name:"main.tf",lang:"hcl",code:"# (provider + rg + storage existants \u2014 inchang\u00e9s)\n\nresource \"azurerm_key_vault\" \"main\" {\n  name                = \"kv-${var.project}-${var.env}\"\n  location            = azurerm_resource_group.main.location\n  resource_group_name = azurerm_resource_group.main.name\n  tenant_id           = data.azurerm_client_config.current.tenant_id\n  sku_name            = \"standard\"\n\n  soft_delete_retention_days = 90\n  purge_protection_enabled   = true\n\n  access_policy {\n    tenant_id = data.azurerm_client_config.current.tenant_id\n    object_id = var.ops_team_object_id\n\n    key_permissions    = [\"Get\", \"List\"]\n    secret_permissions = [\"Get\", \"List\", \"Set\", \"Delete\"]\n  }\n\n  tags = local.tags\n}\n\n# \u2500\u2500 Data source : identit\u00e9 du compte courant \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\ndata \"azurerm_client_config\" \"current\" {}"},{name:"variables.tf (ajout)",lang:"hcl",code:"# Ajouter aux variables existantes :\n\nvariable \"ops_team_object_id\" {\n  type        = string\n  description = \"Object ID AAD de l'\u00e9quipe ops pour les access policies Key Vault\"\n}"},{name:"outputs.tf (ajout)",lang:"hcl",code:"# Ajouter aux outputs existants :\n\noutput \"key_vault_uri\" {\n  value = azurerm_key_vault.main.vault_uri\n}"},{name:"prod.tfvars (ajout)",lang:"hcl",code:"subscription_id       = \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\"\nproject               = \"mapaq\"\nenv                   = \"prod\"\nlocation              = \"canadaeast\"\nops_team_object_id    = \"yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy\" "}],cmds:[{label:"Voir uniquement les changements li\u00e9s au KV",cmd:"terraform plan -var-file=prod.tfvars -target=azurerm_key_vault.main"},{label:"Appliquer (tout le plan)",cmd:"terraform apply -var-file=prod.tfvars"}]},{id:"modify",title:"Modifier une ressource",desc:"Changer la r\u00e9plication du Storage Account (LRS \u2192 GRS). Terraform fait une modification in-place sans recr\u00e9ation.",files:[{name:"main.tf",lang:"hcl",code:"resource \"azurerm_storage_account\" \"main\" {\n  name                     = \"st${var.project}${var.env}\"\n  resource_group_name      = azurerm_resource_group.main.name\n  location                 = azurerm_resource_group.main.location\n  account_tier             = \"Standard\"\n  # Modification : LRS \u2192 GRS pour la r\u00e9silience en prod\n  account_replication_type = var.storage_replication\n  min_tls_version          = \"TLS1_2\"\n  tags                     = local.tags\n}"},{name:"variables.tf (ajout)",lang:"hcl",code:"variable \"storage_replication\" {\n  type        = string\n  description = \"Type de r\u00e9plication Storage\"\n  default     = \"LRS\"\n  validation {\n    condition     = contains([\"LRS\",\"GRS\",\"ZRS\",\"GZRS\"], var.storage_replication)\n    error_message = \"Valeur invalide pour storage_replication.\"\n  }\n}"},{name:"prod.tfvars",lang:"hcl",code:"subscription_id      = \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\"\nproject              = \"mapaq\"\nenv                  = \"prod\"\nlocation             = \"canadaeast\"\nstorage_replication  = \"GRS\" "}],cmds:[{label:"1. Voir l'impact sur le storage uniquement",cmd:"terraform plan -var-file=prod.tfvars -target=azurerm_storage_account.main"},{label:"2. Appliquer la modification",cmd:"terraform apply -var-file=prod.tfvars -target=azurerm_storage_account.main"},{label:"3. Appliquer tout le plan (v\u00e9rification finale)",cmd:"terraform apply -var-file=prod.tfvars"}]},{id:"params",title:"Param\u00e9trage avanc\u00e9",desc:"Variables avec validation, sensitive, valeurs par d\u00e9faut, et fichiers .tfvars par environnement.",files:[{name:"variables.tf",lang:"hcl",code:"variable \"subscription_id\" {\n  type      = string\n  sensitive = true\n}\n\nvariable \"project\" {\n  type = string\n  validation {\n    condition     = can(regex(\"^[a-z0-9]{2,10}$\", var.project))\n    error_message = \"project: minuscules/chiffres, 2-10 caract\u00e8res.\"\n  }\n}\n\nvariable \"env\" {\n  type    = string\n  default = \"dev\"\n  validation {\n    condition     = contains([\"dev\",\"staging\",\"prod\"], var.env)\n    error_message = \"env doit \u00eatre dev, staging ou prod.\"\n  }\n}\n\nvariable \"location\" {\n  type    = string\n  default = \"canadaeast\"\n}\n\nvariable \"sql_admin_password\" {\n  type        = string\n  sensitive   = true  # jamais affich\u00e9 dans les logs ni le state en clair\n  description = \"Mot de passe admin SQL \u2014 passer via TF_VAR_ ou pipeline\"\n}\n\nvariable \"app_instance_count\" {\n  type    = number\n  default = 1\n  validation {\n    condition     = var.app_instance_count >= 1 && var.app_instance_count <= 10\n    error_message = \"Entre 1 et 10 instances.\"\n  }\n}"},{name:"dev.tfvars",lang:"hcl",code:"subscription_id    = \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\"\nproject            = \"mapaq\"\nenv                = \"dev\"\nlocation           = \"canadaeast\"\napp_instance_count = 1\n# sql_admin_password pass\u00e9 via : export TF_VAR_sql_admin_password=\"DevOnly!\" "},{name:"prod.tfvars",lang:"hcl",code:"subscription_id    = \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\"\nproject            = \"mapaq\"\nenv                = \"prod\"\nlocation           = \"canadaeast\"\napp_instance_count = 3\n# sql_admin_password inject\u00e9 par le pipeline CI/CD via TF_VAR_sql_admin_password "}],cmds:[{label:"Dev (mot de passe via env var)",cmd:"export TF_VAR_sql_admin_password=\"secret\" && terraform apply -var-file=dev.tfvars"},{label:"Prod (via pipeline)",cmd:"terraform apply -var-file=prod.tfvars -var=\"sql_admin_password=$SQL_PASSWORD\""},{label:"Lister les outputs sensibles",cmd:"terraform output -json | jq ."}]},{id:"module",title:"Module local",desc:"Extraire des ressources dans un module r\u00e9utilisable et l'appeler depuis le root module.",files:[{name:"main.tf",lang:"hcl",code:"module \"storage\" {\n  source = \"./modules/storage\"\n\n  project     = var.project\n  env         = var.env\n  location    = azurerm_resource_group.main.location\n  rg_name     = azurerm_resource_group.main.name\n  replication = var.env == \"prod\" ? \"GRS\" : \"LRS\"\n  tags        = local.tags\n}\n\nmodule \"appservice\" {\n  source = \"./modules/appservice\"\n\n  project  = var.project\n  env      = var.env\n  location = azurerm_resource_group.main.location\n  rg_name  = azurerm_resource_group.main.name\n  sku      = var.env == \"prod\" ? \"P1v3\" : \"B1\"\n  tags     = local.tags\n}\n\noutput \"storage_id\"    { value = module.storage.storage_id }\noutput \"app_default_hostname\" { value = module.appservice.default_hostname }"},{name:"modules/storage/main.tf",lang:"hcl",code:"resource \"azurerm_storage_account\" \"this\" {\n  name                     = \"st${var.project}${var.env}\"\n  resource_group_name      = var.rg_name\n  location                 = var.location\n  account_tier             = \"Standard\"\n  account_replication_type = var.replication\n  min_tls_version          = \"TLS1_2\"\n  tags                     = var.tags\n}"},{name:"modules/storage/variables.tf",lang:"hcl",code:"variable \"project\"     { type = string }\nvariable \"env\"         { type = string }\nvariable \"location\"    { type = string }\nvariable \"rg_name\"     { type = string }\nvariable \"replication\" { type = string; default = \"LRS\" }\nvariable \"tags\"        { type = map(string); default = {} }"},{name:"modules/storage/outputs.tf",lang:"hcl",code:"output \"storage_id\"   { value = azurerm_storage_account.this.id }\noutput \"storage_name\" { value = azurerm_storage_account.this.name }\noutput \"primary_endpoint\" {\n  value = azurerm_storage_account.this.primary_blob_endpoint\n}"}],cmds:[{label:"Initialiser (t\u00e9l\u00e9charge les modules)",cmd:"terraform init"},{label:"Planifier",cmd:"terraform plan -var-file=prod.tfvars"},{label:"Appliquer un module cibl\u00e9",cmd:"terraform apply -var-file=prod.tfvars -target=module.storage"},{label:"Appliquer tout",cmd:"terraform apply -var-file=prod.tfvars"}]}];
+
+/* ── Données commandes ── */
+const BCATS={binstall:'Installation & CLI',bbuild:'Compilation & validation',bdeploy:'Déploiement',bwhatif:'What-if & historique',bmodule:'Modules & registre'};
+const TCATS={init:'Initialisation',plan:'Plan & validation',apply:'Apply & destroy',state:'Gestion du state',ws:'Workspaces',debug:'Debug & utilitaires'};
+const CAT_COLOR={binstall:'var(--teal)',bbuild:'var(--blue)',bdeploy:'var(--bicep)',bwhatif:'var(--amber)',bmodule:'var(--purple)',init:'var(--teal)',plan:'var(--blue)',apply:'var(--red)',state:'var(--amber)',ws:'var(--purple)',debug:'var(--green)'};
+const BCMDS=[
+  {cat:'binstall',cmds:[
+    {l:'Installer Bicep CLI',t:'az bicep install'},
+    {l:'Mettre à jour Bicep',t:'az bicep upgrade'},
+    {l:'Version installée',t:'az bicep version'},
+    {l:'Désinstaller',t:'az bicep uninstall'},
+  ]},
+  {cat:'bbuild',cmds:[
+    {l:'Compiler .bicep → ARM JSON',t:'az bicep build --file main.bicep'},
+    {l:'Compiler avec output explicite',t:'az bicep build --file main.bicep --outfile azuredeploy.json'},
+    {l:'Décompiler ARM JSON → Bicep',t:'az bicep decompile --file azuredeploy.json'},
+    {l:'Valider un fichier Bicep',t:'az deployment group validate --resource-group <rg> --template-file main.bicep'},
+    {l:'Valider avec paramètres',t:'az deployment group validate --resource-group <rg> --template-file main.bicep --parameters @params.json'},
+    {l:'Lint (analyse statique)',t:'az bicep lint --file main.bicep'},
+    {l:'Générer fichier de paramètres',t:'az bicep generate-params --file main.bicep'},
+  ]},
+  {cat:'bdeploy',cmds:[
+    {l:'Déployer au niveau Resource Group',t:'az deployment group create --resource-group <rg> --template-file main.bicep',w:1},
+    {l:'Déployer avec .bicepparam',t:'az deployment group create --resource-group <rg> --template-file main.bicep --parameters @params.bicepparam',w:1},
+    {l:'Déployer avec paramètre inline',t:'az deployment group create --resource-group <rg> --template-file main.bicep --parameters env=prod'},
+    {l:'Déployer au niveau Subscription',t:'az deployment sub create --location canadaeast --template-file main.bicep',w:1},
+    {l:'Voir le détail du déploiement',t:'az deployment group show --resource-group <rg> --name <deployment-name>'},
+    {l:'Lister les déploiements',t:'az deployment group list --resource-group <rg> --output table'},
+    {l:'Supprimer un déploiement',t:'az deployment group delete --resource-group <rg> --name <deployment-name>',d:1},
+  ]},
+  {cat:'bwhatif',cmds:[
+    {l:'Prévisualiser les changements',t:'az deployment group what-if --resource-group <rg> --template-file main.bicep'},
+    {l:'What-if avec paramètres',t:'az deployment group what-if --resource-group <rg> --template-file main.bicep --parameters @params.bicepparam'},
+    {l:'Voir les opérations du déploiement',t:'az deployment operation group list --resource-group <rg> --name <deployment-name>'},
+    {l:'Exporter ARM template existant',t:'az group export --resource-group <rg> --output json'},
+  ]},
+  {cat:'bmodule',cmds:[
+    {l:'Publier un module dans ACR',t:'az bicep publish --file module.bicep --target br:<registry>.azurecr.io/bicep/<module>:<version>'},
+    {l:'Restaurer les modules externes',t:'az bicep restore --file main.bicep'},
+  ]},
+];
+const TCMDS=[
+  {cat:'init',cmds:[
+    {l:'Initialiser le répertoire',t:'terraform init'},
+    {l:'Réinitialiser (re-download providers)',t:'terraform init -upgrade'},
+    {l:'Init avec backend config',t:'terraform init -backend-config=backend.conf'},
+    {l:'Version de Terraform',t:'terraform version'},
+    {l:'Lister les providers',t:'terraform providers'},
+    {l:'Mettre à jour le lock file',t:'terraform providers lock -platform=linux_amd64'},
+  ]},
+  {cat:'plan',cmds:[
+    {l:'Prévisualiser les changements',t:'terraform plan'},
+    {l:'Sauvegarder le plan',t:'terraform plan -out=tfplan'},
+    {l:'Plan avec fichier de variables',t:'terraform plan -var-file=prod.tfvars'},
+    {l:'Plan avec variable inline',t:'terraform plan -var="env=prod"'},
+    {l:'Valider la syntaxe HCL',t:'terraform validate'},
+    {l:'Formatter le code HCL',t:'terraform fmt -recursive'},
+    {l:'Voir les outputs',t:'terraform output -json'},
+  ]},
+  {cat:'apply',cmds:[
+    {l:'Appliquer les changements',t:'terraform apply',w:1},
+    {l:'Appliquer un plan sauvegardé',t:'terraform apply tfplan',w:1},
+    {l:'Appliquer sans confirmation',t:'terraform apply -auto-approve',d:1},
+    {l:'Appliquer une ressource ciblée',t:'terraform apply -target=<resource.name>',w:1},
+    {l:'Détruire toutes les ressources',t:'terraform destroy',d:1},
+    {l:'Détruire sans confirmation',t:'terraform destroy -auto-approve',d:1},
+    {l:'Détruire une ressource ciblée',t:'terraform destroy -target=<resource.name>',d:1},
+    {l:'Rafraîchir le state',t:'terraform refresh',w:1},
+  ]},
+  {cat:'state',cmds:[
+    {l:'Lister les ressources dans le state',t:'terraform state list'},
+    {l:'Détail une ressource du state',t:'terraform state show <resource.name>'},
+    {l:'Retirer une ressource du state',t:'terraform state rm <resource.name>',d:1},
+    {l:'Déplacer une ressource',t:'terraform state mv <source> <destination>',w:1},
+    {l:'Importer une ressource existante',t:'terraform import <resource.name> <cloud-id>',w:1},
+    {l:'Taint (forcer recréation)',t:'terraform taint <resource.name>',w:1},
+    {l:'Forcer libération du verrou',t:'terraform force-unlock <lock-id>',d:1},
+    {l:'Pull state remote',t:'terraform state pull'},
+  ]},
+  {cat:'ws',cmds:[
+    {l:'Lister les workspaces',t:'terraform workspace list'},
+    {l:'Workspace actif',t:'terraform workspace show'},
+    {l:'Créer un workspace',t:'terraform workspace new <name>'},
+    {l:'Changer de workspace',t:'terraform workspace select <name>'},
+    {l:'Supprimer un workspace',t:'terraform workspace delete <name>',d:1},
+  ]},
+  {cat:'debug',cmds:[
+    {l:'Console interactive (test expressions)',t:'terraform console'},
+    {l:'Logs détaillés',t:'export TF_LOG=DEBUG'},
+    {l:'Logs vers fichier',t:'export TF_LOG_PATH=./terraform.log'},
+    {l:'Afficher le plan binaire',t:'terraform show tfplan'},
+    {l:'Plan en JSON lisible',t:'terraform show -json tfplan'},
+    {l:'Graphe de dépendances (dot)',t:'terraform graph | dot -Tsvg > graph.svg'},
+  ]},
+];
+
+/* ── Glossaire ── */
+const GLOSSARY=[
+  {term:'Bicep',tool:'bicep',def:`Langage DSL Microsoft pour décrire l'infrastructure Azure. <strong>Transpile vers ARM JSON</strong> avec une syntaxe concise. Alternative native à Terraform pour Azure.`},
+  {term:'ARM Template',tool:'azure',def:`<strong>Azure Resource Manager Template</strong> : fichier JSON natif Azure. Bicep compile vers ARM. Verbeux mais exhaustif — tout ce qu'Azure supporte est disponible en ARM.`},
+  {term:'Resource Group',tool:'azure',def:`Conteneur logique Azure qui <strong>regroupe les ressources liées</strong>. Unité de déploiement, facturation et contrôle d'accès. La plupart des déploiements Bicep/Terraform ciblent un RG.`},
+  {term:'Subscription',tool:'azure',def:`Unité de <strong>facturation et gouvernance</strong> dans Azure. Contient les Resource Groups. Un déploiement au niveau subscription permet de créer des RG via Bicep ou Terraform.`},
+  {term:'What-if',tool:'bicep',def:`Mode prévisualisation Bicep/ARM : montre <strong>ce qui sera créé, modifié ou supprimé</strong> sans rien appliquer. Équivalent du <code>terraform plan</code>.`},
+  {term:'Module Bicep',tool:'bicep',def:`Fichier <code>.bicep</code> réutilisable référencé via le mot-clé <code>module</code>. Peut être local ou publié dans un <strong>Azure Container Registry (ACR)</strong>.`},
+  {term:'param',tool:'bicep',def:`Déclaration d'un <strong>paramètre d'entrée</strong> Bicep. Supporte les decorators <code>@description</code>, <code>@secure</code>, <code>@allowed</code>, <code>@minLength</code>, <code>@minValue</code>.`},
+  {term:'.bicepparam',tool:'bicep',def:`Fichier de paramètres natif Bicep (format moderne). Référence le template avec <code>using 'main.bicep'</code>. Plus lisible que le format <code>.json</code> classique.`},
+  {term:'targetScope',tool:'bicep',def:`Déclare le <strong>niveau de déploiement</strong> du fichier Bicep : <code>resourceGroup</code> (défaut), <code>subscription</code>, <code>managementGroup</code> ou <code>tenant</code>.`},
+  {term:'Terraform',tool:'tf',def:`Outil IaC open-source HashiCorp en langage <strong>HCL</strong>. Multi-cloud par nature : Azure, AWS, GCP et des centaines de providers.`},
+  {term:'HCL',tool:'tf',def:`<strong>HashiCorp Configuration Language</strong> : syntaxe déclarative de Terraform. Fichiers <code>.tf</code>. Supporte les expressions, fonctions, boucles et modules.`},
+  {term:'Provider',tool:'tf',def:`Plugin Terraform exposant les ressources d'un cloud. Le <strong>provider AzureRM</strong> (<code>hashicorp/azurerm</code>) gère toutes les ressources Azure. Versionné dans <code>.terraform.lock.hcl</code>.`},
+  {term:'State',tool:'tf',def:`Fichier <code>terraform.tfstate</code> mémorisant l'<strong>état réel de l'infrastructure</strong>. Permet de calculer le diff (plan). À stocker dans un backend distant en équipe.`},
+  {term:'Backend',tool:'tf',def:`Stockage distant du state Terraform. Sur Azure : <strong>Azure Blob Storage</strong>. Permet le travail en équipe et le verrouillage du state.`},
+  {term:'.tfvars',tool:'tf',def:`Fichier de valeurs de variables Terraform. Nommé <code>terraform.tfvars</code> (auto-chargé) ou <code>prod.tfvars</code> (passé avec <code>-var-file</code>). Un fichier par environnement.`},
+  {term:'Plan',tool:'tf',def:`Calcul du <strong>diff entre state et configuration HCL</strong>. Liste les ressources à créer, modifier ou détruire. Sauvegardable avec <code>-out=tfplan</code> pour un apply déterministe.`},
+  {term:'Module Terraform',tool:'tf',def:`Répertoire de fichiers <code>.tf</code> encapsulant une logique réutilisable. Appelé via le bloc <code>module</code>. Peut venir du <strong>Terraform Registry</strong> ou d'un dépôt Git.`},
+  {term:'Workspace',tool:'tf',def:`Environnement isolé partageant la configuration HCL mais avec un <strong>state séparé</strong>. Utile pour gérer dev/staging/prod dans le même répertoire.`},
+  {term:'Data Source',tool:'tf',def:`Bloc <code>data</code> qui <strong>lit des ressources existantes</strong> sans les gérer. Exemple : récupérer l'ID d'un Key Vault existant pour l'utiliser dans un nouveau déploiement.`},
+  {term:'sensitive',tool:'tf',def:`Attribut de variable Terraform marquant une valeur comme <strong>confidentielle</strong> : masquée dans les logs et le state. À utiliser pour les mots de passe, tokens et clés API.`},
+  {term:'Idempotence',tool:'both',def:`Propriété garantissant que <strong>ré-appliquer le même template produit le même résultat</strong>. Bicep et Terraform sont idempotents : un apply sur une infra conforme ne fait rien.`},
+  {term:'Drift',tool:'both',def:`Écart entre l'<strong>état déclaré en IaC et l'état réel dans Azure</strong>. Terraform le détecte au plan. En Bicep, le mode <em>Complete</em> le corrige, <em>Incremental</em> l'ignore.`},
+  {term:'Locals',tool:'both',def:`Valeurs calculées localement dans le template (<code>var</code> en Bicep, bloc <code>locals</code> en Terraform). Utiles pour les <strong>tags communs, préfixes de noms et expressions répétées</strong>.`},
+  {term:'Output',tool:'both',def:`Valeur exportée par un déploiement/module. Accessible après <code>az deployment group show</code> (Bicep) ou <code>terraform output</code> (TF). Utile pour chaîner des modules et exposer des endpoints à CI/CD.`},
+];
+
+/* ── État global ── */
+const state={topTab:'bicep',cmdSearch:{bicep:'',terraform:''},cmdCat:{bicep:'all',terraform:'all'},fileTool:'bicep',glossSearch:'',glossFilter:'all'};
+
+/* ── SVG icons ── */
+const CPSVG=`<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+const CHKSVG=`<svg viewBox="0 0 24 24" stroke="var(--green)"><polyline points="20 6 9 17 4 12"/></svg>`;
+const WRNSVG=`<svg viewBox="0 0 24 24"><polygon points="10.29 3.86 1.82 18 22.18 18 13.71 3.86 10.29 3.86"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+
+/* ── Tokenizer commandes ── */
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escA(s){return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function hlCmd(t,isTf){
+  const KW=isTf?/^(terraform|export)(?=[ |]|$)/:/^(az|bicep)(?=[ |]|$)/;
+  const TOKEN=new RegExp(KW.source+'|^(--[\\w-]+=?)|^(-[a-zA-Z]+)(?=[ |=]|$)|^(<[a-z][\\w-]*>)|^(\'[^\']*\')');
+  const WORD=/^[a-zA-Z_][\w.-]*/;
+  const kc=isTf?'kw-tf':'kw';
+  let out='',rem=t;
+  while(rem.length){
+    const m=rem.match(TOKEN);
+    if(m){
+      if(m[1])out+=`<span class="${kc}">${esc(m[1])}</span>`;
+      else if(m[2])out+=`<span class="flag">${esc(m[2])}</span>`;
+      else if(m[3])out+=`<span class="flag">${esc(m[3])}</span>`;
+      else if(m[4])out+=`<span class="val">${esc(m[4])}</span>`;
+      else if(m[5])out+=`<span class="str">${esc(m[5])}</span>`;
+      rem=rem.slice(m[0].length);
+    } else {
+      const w=rem.match(WORD);
+      if(w){out+=esc(w[0]);rem=rem.slice(w[0].length);}
+      else{out+=esc(rem[0]);rem=rem.slice(1);}
+    }
+  }
+  return out;
+}
+
+/* ── Syntax highlighting code ── */
+function hlCode(rawCode, lang){
+  return rawCode.split('\n').map(line=>{
+    let s=esc(line);
+    if(lang==='bicep'){
+      if(/^\s*\/\//.test(s)){return s.replace(/(\/\/.*)$/,'<span class="c-comment">$1</span>');}
+      s=s.replace(/(@\w+)/g,'<span class="c-dec">$1</span>');
+      s=s.replace(/\b(targetScope|param|var|resource|module|output|existing|if|for|import)\b/g,'<span class="c-kw">$1</span>');
+      s=s.replace(/\b(string|int|bool|object|array|any)\b/g,'<span class="c-type">$1</span>');
+      s=s.replace(/(\$\{[^}]*\})/g,'<span class="c-interp">$1</span>');
+      s=s.replace(/(&#39;[^&]*&#39;|'[^']*')/g,'<span class="c-str">$1</span>');
+    } else if(lang==='hcl'){
+      if(/^\s*#/.test(s)){return s.replace(/(#.*)$/,'<span class="c-comment">$1</span>');}
+      s=s.replace(/\b(resource|variable|output|module|provider|terraform|data|locals|backend|required_providers)\b/g,'<span class="c-kw-tf">$1</span>');
+      s=s.replace(/\b(string|number|bool|list|map|set|any)\b/g,'<span class="c-type">$1</span>');
+      s=s.replace(/\b(true|false|null)\b/g,'<span class="c-val">$1</span>');
+      s=s.replace(/(\$\{[^}]*\})/g,'<span class="c-interp">$1</span>');
+      s=s.replace(/(&quot;[^&]*&quot;|"[^"]*")/g,'<span class="c-str">$1</span>');
+    } else if(lang==='json'){
+      s=s.replace(/(&quot;[^&:]*&quot;)\s*:/g,'<span class="c-kw">$1</span>:');
+      s=s.replace(/:\s*(&quot;[^&]*&quot;)/g,': <span class="c-str">$1</span>');
+    }
+    return s;
+  }).join('\n');
+}
+
+/* ── Render commandes ── */
+function renderCmds(tool){
+  const DATA=tool==='bicep'?BCMDS:TCMDS;
+  const CATS=tool==='bicep'?BCATS:TCATS;
+  const isTf=tool==='terraform';
+  const q=state.cmdSearch[tool].toLowerCase();
+  const ac=state.cmdCat[tool];
+
+  // Tabs
+  const tabsEl=document.getElementById('ctabs-'+tool);
+  let th=`<button class="ctab ${ac==='all'?'active':''}" onclick="setCat('${tool}','all',this)"><span class="dot" style="background:var(--text3)"></span>Tout</button>`;
+  for(const[k,v] of Object.entries(CATS)){
+    th+=`<button class="ctab ${ac===k?'active':''}" onclick="setCat('${tool}','${k}',this)"><span class="dot" style="background:${CAT_COLOR[k]||'var(--text3)'}"></span>${v}</button>`;
+  }
+  tabsEl.innerHTML=th;
+
+  let html='';
+  for(const sec of DATA){
+    if(ac!=='all'&&sec.cat!==ac) continue;
+    const filtered=sec.cmds.filter(c=>!q||c.l.toLowerCase().includes(q)||c.t.toLowerCase().includes(q));
+    if(!filtered.length) continue;
+    const color=CAT_COLOR[sec.cat]||'var(--text3)';
+    html+=`<div class="section"><div class="sec-hdr">
+      <div class="sec-stripe" style="background:${color}"></div>
+      <span class="sec-title">${CATS[sec.cat]}</span>
+      <span class="sec-count">${filtered.length}</span>
+    </div><div class="cgrid">`;
+    for(const cmd of filtered){
+      const badge=cmd.d?`<div><span class="badge bd">${WRNSVG}destructif</span></div>`:cmd.w?`<div><span class="badge bw">${WRNSVG}attention</span></div>`:'';
+      html+=`<div class="ccard" style="border-left-color:${color}" data-cmd="${escA(cmd.t)}" onclick="copyCmd(this)">
+        <div class="ctop"><span class="clbl">${cmd.l}</span><span class="cpbtn">${CPSVG}</span></div>
+        ${badge}<div class="cmdtext">${hlCmd(cmd.t,isTf)}</div>
+      </div>`;
+    }
+    html+=`</div></div>`;
+  }
+  if(!html)html=`<div class="empty">Aucune commande pour "${state.cmdSearch[tool]}"</div>`;
+  document.getElementById('cmds-'+tool).innerHTML=html;
+}
+
+/* ── Render fichiers config ── */
+function renderScenarios(tool){
+  const data=tool==='bicep'?BICEP_SCENARIOS:TF_SCENARIOS;
+  const isTf=tool==='terraform';
+  let html='';
+  data.forEach((sc,idx)=>{
+    const fileTabsHtml=sc.files.map((f,fi)=>
+      `<button class="ftab-btn ${fi===0?'active':''}" onclick="showFile('${tool}-${sc.id}',${fi},this)">${f.name}</button>`
+    ).join('');
+    const fileBlocksHtml=sc.files.map((f,fi)=>
+      `<div class="fcode-block ${fi===0?'active':''}" id="fb-${tool}-${sc.id}-${fi}">
+        <div class="code-wrap">
+          <div class="code-hdr">
+            <span class="code-fname">${f.name}</span>
+            <span class="code-lang">${f.lang}</span>
+            <button class="code-cpbtn" data-code="${escA(f.code)}" onclick="copyCode(this)">${CPSVG} copier</button>
+          </div>
+          <pre><code>${hlCode(f.code,f.lang)}</code></pre>
+        </div>
+      </div>`
+    ).join('');
+    const cmdsHtml=sc.cmds.map((c,ci)=>
+      `<div class="sc-cmd-row" data-cmd="${escA(c.cmd)}" onclick="copyCmdRow(this)">
+        <span class="sc-cmd-lbl">${c.label}</span>
+        <span class="sc-cmd-val">${hlCmd(c.cmd,isTf)}</span>
+        <span class="sc-cmd-cp">${CPSVG}</span>
+      </div>`
+    ).join('');
+    html+=`<div class="sc-item" id="sci-${tool}-${sc.id}">
+      <div class="sc-hdr" onclick="toggleSc('${tool}-${sc.id}')">
+        <span class="sc-num">0${idx+1}</span>
+        <div><div class="sc-title">${sc.title}</div><div class="sc-desc">${sc.desc}</div></div>
+        <span class="sc-chevron">›</span>
+      </div>
+      <div class="sc-body">
+        <div class="ftabs-bar">${fileTabsHtml}</div>
+        ${fileBlocksHtml}
+        <div class="sc-cmds">
+          <div class="sc-cmds-title">Commandes d'appel</div>
+          ${cmdsHtml}
+        </div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('fscenarios-'+tool).innerHTML=html;
+  // Ouvrir le premier
+  if(data.length) toggleSc(tool+'-'+data[0].id);
+}
+
+/* ── Render glossaire ── */
+function renderGloss(){
+  const q=state.glossSearch.toLowerCase();
+  const f=state.glossFilter;
+  const counts={all:GLOSSARY.length,bicep:0,azure:0,tf:0,both:0};
+  GLOSSARY.forEach(g=>{if(counts[g.tool]!==undefined)counts[g.tool]++;});
+  const pills=[
+    {k:'all',l:`Tous (${counts.all})`},
+    {k:'bicep',l:`Bicep (${counts.bicep})`},
+    {k:'azure',l:`Azure (${counts.azure})`},
+    {k:'tf',l:`Terraform (${counts.tf})`},
+    {k:'both',l:`Commun (${counts.both})`},
+  ];
+  document.getElementById('gpills').innerHTML=pills.map(p=>
+    `<button class="gpill ${p.k===f?'active':''}" onclick="setGlossFilter('${p.k}')">${p.l}</button>`
+  ).join('');
+  const filtered=GLOSSARY.filter(g=>(f==='all'||g.tool===f)&&(!q||g.term.toLowerCase().includes(q)||g.def.toLowerCase().includes(q)));
+  if(!filtered.length){document.getElementById('gloss-content').innerHTML=`<div class="empty">Aucun terme pour "${state.glossSearch}"</div>`;return;}
+  const toolLabel={bicep:'Bicep',azure:'Azure',tf:'Terraform',both:'Bicep + TF'};
+  let html='<div class="gloss-grid">';
+  for(const g of filtered){
+    html+=`<div class="g-card gc-${g.tool}"><div class="g-term">${esc(g.term)}<span class="g-badge gb-${g.tool}">${toolLabel[g.tool]||g.tool}</span></div><div class="g-def">${g.def}</div></div>`;
+  }
+  html+='</div>';
+  document.getElementById('gloss-content').innerHTML=html;
+}
+
+/* ── Handlers ── */
+function switchTop(tab,el){
+  state.topTab=tab;
+  document.querySelectorAll('.ttab').forEach(t=>t.className='ttab');
+  const cls={bicep:'ab',terraform:'at',glossaire:'ag',fichiers:'af'};
+  el.className='ttab '+(cls[tab]||'ab');
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+tab).classList.add('active');
+  if(tab==='bicep'||tab==='terraform') renderCmds(tab);
+  else if(tab==='fichiers'){renderScenarios('bicep');}
+  else renderGloss();
+}
+function setCat(tool,cat,el){
+  state.cmdCat[tool]=cat;
+  document.querySelectorAll('#ctabs-'+tool+' .ctab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderCmds(tool);
+}
+function filterCmds(tool,val){state.cmdSearch[tool]=val;renderCmds(tool);}
+function setFileTool(tool,el){
+  state.fileTool=tool;
+  document.querySelectorAll('.ftbtn').forEach(b=>{b.className='ftbtn';});
+  el.className='ftbtn '+(tool==='bicep'?'fb':'ft');
+  document.getElementById('fscenarios-bicep').style.display=tool==='bicep'?'':'none';
+  document.getElementById('fscenarios-terraform').style.display=tool==='terraform'?'':'none';
+  const el2=document.getElementById('fscenarios-'+tool);
+  if(!el2.innerHTML) renderScenarios(tool);
+}
+function toggleSc(id){
+  const el=document.getElementById('sci-'+id);
+  el.classList.toggle('open');
+}
+function showFile(scId,fi,el){
+  const prefix='fb-'+scId+'-';
+  document.querySelectorAll(`[id^="${prefix}"]`).forEach(b=>b.classList.remove('active'));
+  document.getElementById(prefix+fi).classList.add('active');
+  const bar=el.closest('.sc-body').querySelector('.ftabs-bar');
+  bar.querySelectorAll('.ftab-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+}
+function filterGloss(val){state.glossSearch=val;renderGloss();}
+function setGlossFilter(f){state.glossFilter=f;renderGloss();}
+
+async function copyCmd(el){
+  const text=el.dataset.cmd;
+  try{await navigator.clipboard.writeText(text);}catch(e){}
+  el.classList.add('copied');
+  const btn=el.querySelector('.cpbtn');btn.innerHTML=CHKSVG;
+  setTimeout(()=>{el.classList.remove('copied');btn.innerHTML=CPSVG;},1400);
+}
+async function copyCmdRow(el){
+  const text=el.dataset.cmd;
+  try{await navigator.clipboard.writeText(text);}catch(e){}
+  el.classList.add('copied');
+  const cp=el.querySelector('.sc-cmd-cp');cp.innerHTML=CHKSVG;
+  setTimeout(()=>{el.classList.remove('copied');cp.innerHTML=CPSVG;},1400);
+}
+async function copyCode(btn){
+  const text=btn.dataset.code;
+  try{await navigator.clipboard.writeText(text);}catch(e){}
+  const orig=btn.innerHTML;btn.innerHTML=`${CHKSVG} copié!`;
+  setTimeout(()=>{btn.innerHTML=orig;},1400);
+}
+
+// Init
+renderCmds('bicep');
+</script>
+</body>
+</html>

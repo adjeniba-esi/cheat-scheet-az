@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cheat-sheet
+  labels:
+    app: cheat-sheet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cheat-sheet
+  template:
+    metadata:
+      labels:
+        app: cheat-sheet
+    spec:
+      containers:
+        - name: cheat-sheet
+          image: esiadcr.azurecr.io/cheat-sheet:latest  
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu:    "50m"
+            limits:
+              memory: "256Mi"
+              cpu:    "200m"
+          readinessProbe:
+            httpGet:
+              path: /index.html
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /index.html
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
