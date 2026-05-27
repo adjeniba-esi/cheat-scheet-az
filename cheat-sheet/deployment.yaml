@@ -18,7 +18,7 @@ spec:
         - name: cheat-sheet
           image: esiadcr.azurecr.io/cheat-sheet:latest  
           ports:
-            - containerPort: 8080
+            - containerPort: 80
           resources:
             requests:
               memory: "128Mi"
@@ -29,12 +29,12 @@ spec:
           readinessProbe:
             httpGet:
               path: /index.html
-              port: 8080
+              port: 80
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /index.html
-              port: 8080
+              port: 80
             initialDelaySeconds: 10
             periodSeconds: 30
