@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cheat-sheet
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path: /index.html
+spec:
+  type: LoadBalancer
+  selector:
+    app: cheat-sheet
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
